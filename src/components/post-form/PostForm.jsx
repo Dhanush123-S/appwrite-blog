@@ -19,34 +19,43 @@ export default function PostForm({ post }) {
     const userData = useSelector((state) => state.auth.userData);
 
     const submit = async (data) => {
+        try{
         let file = null;
-        if (data.image && data.image[0]) {
+        if (post && data.image[0]) {
             file = await appwriteService.uploadFile(data.image[0]);
+            console.log("Uploaded file response", file);
 
-            if (file && post.$id) {
-                appwriteService.deleteFile(post.featuredImage);
+            if (file && post.featuredImage) {
+                await appwriteService.deleteFile(post.featuredImage);
+            }
             }
 
+            if(post){
             const dbPost = await appwriteService.updatePost(post.$id, {
                 ...data,
-                featuredImage: file ? file.$id : undefined,
+                featuredImage: file ? file.$id : post.featuredImage,
             });
 
             if (dbPost) {
                 navigate(`/post/${dbPost.$id}`);
             }
         } else {
-            const file = await appwriteService.uploadFile(data.image[0]);
+             file = await appwriteService.uploadFile(data.image[0]);
 
-            if (file && file.$id) {
+            if (!file || !file.$id) {
+                alert('File upload failed');
+                return
+            }
                 const fileId = file.$id;
-                data.featuredImage = fileId;
-                const dbPost = await appwriteService.createPost({ ...data, userId: userData.$id });
+                const dbPost = await appwriteService.createPost({ ...data, userId: userData.$id, featuredImage:fileId });
 
                 if (dbPost) {
                     navigate(`/post/${dbPost.$id}`);
                 }
             }
+        } catch(error){
+            console.error("Error submitting post", error);
+            alert("Something went wrong while submitting your post");
         }
     };
 
